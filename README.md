@@ -13,6 +13,7 @@
 - 📱 QR-код для каждой ссылки со скачиванием в PNG
 - 🌗 Светлая и тёмная тема по системной настройке
 - 🗑️ Удаление аккаунта вместе со всеми данными
+- 🛡️ Админка: сводка по сервису, все пользователи и все ссылки, поиск, бан и разбан, выдача прав админа, отключение и удаление чужих ссылок
 
 ## 🧱 Стек
 
@@ -20,7 +21,7 @@
 |---|---|
 | 🐹 Бэкенд | Go 1.27, `net/http`, `pgx`, `golang-jwt`, `bcrypt`, `go-qrcode` |
 | 🐘 База | PostgreSQL 17 |
-| 🎨 Фронтенд | HTML + CSS + vanilla JS без сборки, раздаёт nginx |
+| 🎨 Фронтенд | HTML + CSS + vanilla JS без сборки, шрифты лежат локально, раздаёт nginx |
 | 🐳 Запуск | Docker Compose |
 
 ## 🚀 Запуск
@@ -32,6 +33,22 @@ docker compose up --build
 ```
 
 Откройте 👉 http://localhost:8080
+
+## 🛡️ Как стать админом
+
+Зарегистрируйтесь в интерфейсе, затем выдайте себе права разовой командой:
+
+```bash
+docker compose run --rm api promote you@example.com
+```
+
+Обновите страницу, и в шапке появится вкладка «Админка» 👑 Дальше права можно выдавать другим пользователям прямо из админки.
+
+Что происходит при бане 🚫:
+
+- все сессии пользователя сразу перестают работать, войти заново нельзя;
+- все короткие ссылки пользователя начинают отвечать `404`;
+- данные остаются на месте, так что разбан возвращает всё как было.
 
 ## 🗺️ Как устроено
 
@@ -52,7 +69,8 @@ docker compose up --build
 
 | Переменная | По умолчанию | Зачем |
 |---|---|---|
-| `DATABASE_URL` | — | Строка подключения к Postgres (compose собирает её сам) |
+| `RELEASE` | `dev` | Тег образов, например git-хеш коммита |
+| `DATABASE_URL` | собирается из `POSTGRES_*` | Строка подключения к Postgres, можно указать внешнюю базу |
 | `JWT_SECRET` | — | Секрет подписи токенов, минимум 32 символа |
 | `TOKEN_TTL` | `168h` | Сколько живёт сессия |
 | `COOKIE_SECURE` | `false` | `true`, если сайт работает по HTTPS |
@@ -76,6 +94,13 @@ docker compose up --build
 | `DELETE` | `/api/links/{id}` | Удалить ссылку |
 | `GET` | `/api/links/{id}/stats` | Статистика переходов |
 | `GET` | `/api/links/{id}/qr` | QR-код в PNG |
+| `GET` | `/api/admin/overview` | 🛡️ Сводка по сервису |
+| `GET` | `/api/admin/users?q=` | 🛡️ Все пользователи с поиском |
+| `PATCH` | `/api/admin/users/{id}` | 🛡️ Бан, разбан, права админа: `{"banned": true}`, `{"is_admin": true}` |
+| `DELETE` | `/api/admin/users/{id}` | 🛡️ Удалить пользователя |
+| `GET` | `/api/admin/links?q=` | 🛡️ Все ссылки с поиском |
+| `PATCH` | `/api/admin/links/{id}` | 🛡️ Включить или выключить ссылку |
+| `DELETE` | `/api/admin/links/{id}` | 🛡️ Удалить ссылку |
 | `GET` | `/{code}` | Редирект на оригинал |
 | `GET` | `/healthz` | Проверка живости (пингует базу) |
 
@@ -92,6 +117,8 @@ curl -i localhost:8080/go
 ```bash
 docker compose logs -f api            # 📜 логи в JSON
 docker compose run --rm migrate       # 🧬 применить миграции вручную
+docker compose run --rm api promote me@example.com   # 👑 выдать права админа
+RELEASE=$(git rev-parse --short HEAD) docker compose build   # 🏷️ собрать релиз с тегом коммита
 docker compose up -d --scale api=3    # 📈 запустить три инстанса api
 docker compose restart web            # 🔁 чтобы nginx увидел новые инстансы
 ```
@@ -100,16 +127,17 @@ docker compose restart web            # 🔁 чтобы nginx увидел но�
 
 ```
 api/
-  main.go        запуск, команды serve и migrate, graceful shutdown
+  main.go        запуск, команды serve, migrate и promote, graceful shutdown
   config.go      конфиг из переменных окружения
   migrate.go     встроенные SQL-миграции
   store.go       запросы к PostgreSQL
-  auth.go        пароли, JWT, регистрация и вход
+  auth.go        пароли, JWT, регистрация и вход, проверка бана и прав
   links.go       CRUD ссылок, статистика, QR, редирект
+  admin.go       эндпоинты админки
   http.go        роутинг, JSON-хелперы, логирование запросов
   migrations/    SQL-схема
 web/
-  public/        index.html и assets (css, js, favicon)
+  public/        index.html и assets (css, js, шрифты, favicon)
   nginx.conf.template
 docker-compose.yml
 Отчёт.md         📝 отчёт по 12 факторам

@@ -5,11 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>shorty</title>
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/assets/fonts.css">
   <link rel="stylesheet" href="/assets/style.css">
   <script src="/assets/app.js" defer></script>
+  <script src="/assets/admin.js" defer></script>
 </head>
 <body>
   <main id="auth" class="auth" hidden>
@@ -36,14 +35,18 @@
 
   <div id="app" hidden>
     <header class="topbar">
-      <span class="logo">shorty</span>
+      <a class="logo" href="#">shorty</a>
+      <nav id="nav" class="nav" hidden>
+        <a href="#" data-view="links">Мои ссылки</a>
+        <a href="#admin" data-view="admin">Админка</a>
+      </nav>
       <div class="topbar__user">
         <span id="user-email"></span>
         <button id="logout" class="btn btn--ghost">Выйти</button>
       </div>
     </header>
 
-    <main class="page">
+    <main id="view-links" class="page">
       <form id="create-form" class="create" novalidate>
         <label class="create__label" for="create-url">Вставьте длинную ссылку</label>
         <div class="create__row">
@@ -75,6 +78,22 @@
         <p id="links-empty" class="empty" hidden>Здесь появятся ваши короткие ссылки. Вставьте первую длинную ссылку в поле выше.</p>
         <ul id="links" class="links__list"></ul>
       </section>
+    </main>
+
+    <main id="view-admin" class="page page--wide" hidden>
+      <h1 class="admin__title">Админка</h1>
+      <dl id="overview" class="overview"></dl>
+
+      <div class="admin__bar">
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" data-tab="users" aria-selected="true">Пользователи</button>
+          <button type="button" role="tab" data-tab="links" aria-selected="false">Все ссылки</button>
+        </div>
+        <input id="admin-search" type="search" placeholder="Поиск по email, коду или адресу" autocomplete="off">
+      </div>
+
+      <ul id="admin-list" class="rows"></ul>
+      <p id="admin-empty" class="empty" hidden>Ничего не нашлось. Попробуйте изменить запрос.</p>
     </main>
 
     <footer class="footer">

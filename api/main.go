@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -48,8 +49,13 @@ func run() error {
 		return serve(ctx, cfg, db)
 	case "migrate":
 		return migrate(ctx, db)
+	case "promote":
+		if len(os.Args) < 3 {
+			return fmt.Errorf("usage: shorty promote <email>")
+		}
+		return promote(ctx, db, os.Args[2])
 	default:
-		return fmt.Errorf("unknown command %q, use serve or migrate", command)
+		return fmt.Errorf("unknown command %q, use serve, migrate or promote", command)
 	}
 }
 
@@ -79,5 +85,14 @@ func serve(ctx context.Context, cfg Config, db *pgxpool.Pool) error {
 	if err := srv.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
+	return nil
+}
+
+func promote(ctx context.Context, db *pgxpool.Pool, email string) error {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if err := (&Store{db: db}).PromoteUser(ctx, email); err != nil {
+		return fmt.Errorf("promote %s: %w", email, err)
+	}
+	slog.Info("user promoted to admin", "email", email)
 	return nil
 }

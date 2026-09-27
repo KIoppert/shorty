@@ -76,18 +76,48 @@ func (a *App) requireUser(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		userID, err := strconv.ParseInt(claims.Subject, 10, 64)
+		id, err := strconv.ParseInt(claims.Subject, 10, 64)
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "сессия недействительна")
 			return
 		}
 
-		next(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, userID)))
+		user, err := a.store.UserByID(r.Context(), id)
+		if errors.Is(err, ErrNotFound) {
+			a.clearSession(w)
+			writeError(w, http.StatusUnauthorized, "аккаунт не найден")
+			return
+		}
+		if err != nil {
+			serverError(w, err)
+			return
+		}
+		if user.BannedAt != nil {
+			a.clearSession(w)
+			writeError(w, http.StatusUnauthorized, "аккаунт заблокирован")
+			return
+		}
+
+		next(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, user)))
 	}
 }
 
+func (a *App) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
+	return a.requireUser(func(w http.ResponseWriter, r *http.Request) {
+		if !currentUser(r).IsAdmin {
+			writeError(w, http.StatusForbidden, "нужны права администратора")
+			return
+		}
+		next(w, r)
+	})
+}
+
+func currentUser(r *http.Request) User {
+	return r.Context().Value(ctxKey{}).(User)
+}
+
 func userID(r *http.Request) int64 {
-	return r.Context().Value(ctxKey{}).(int64)
+	return currentUser(r).ID
 }
 
 type credentials struct {
@@ -142,6 +172,10 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "неверный email или пароль")
 		return
 	}
+	if user.BannedAt != nil {
+		writeError(w, http.StatusForbidden, "аккаунт заблокирован")
+		return
+	}
 
 	a.startSession(w, user)
 }
@@ -160,17 +194,7 @@ func (a *App) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) me(w http.ResponseWriter, r *http.Request) {
-	user, err := a.store.UserByID(r.Context(), userID(r))
-	if errors.Is(err, ErrNotFound) {
-		a.clearSession(w)
-		writeError(w, http.StatusUnauthorized, "аккаунт не найден")
-		return
-	}
-	if err != nil {
-		serverError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, user)
+	writeJSON(w, http.StatusOK, currentUser(r))
 }
 
 func (a *App) deleteMe(w http.ResponseWriter, r *http.Request) {

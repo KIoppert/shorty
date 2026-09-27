@@ -37,6 +37,14 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("GET /api/links/{id}/stats", a.requireUser(a.linkStats))
 	mux.HandleFunc("GET /api/links/{id}/qr", a.requireUser(a.linkQR))
 
+	mux.HandleFunc("GET /api/admin/overview", a.requireAdmin(a.adminOverview))
+	mux.HandleFunc("GET /api/admin/users", a.requireAdmin(a.adminUsers))
+	mux.HandleFunc("PATCH /api/admin/users/{id}", a.requireAdmin(a.adminUpdateUser))
+	mux.HandleFunc("DELETE /api/admin/users/{id}", a.requireAdmin(a.adminDeleteUser))
+	mux.HandleFunc("GET /api/admin/links", a.requireAdmin(a.adminLinks))
+	mux.HandleFunc("PATCH /api/admin/links/{id}", a.requireAdmin(a.adminUpdateLink))
+	mux.HandleFunc("DELETE /api/admin/links/{id}", a.requireAdmin(a.adminDeleteLink))
+
 	mux.HandleFunc("GET /{code}", a.redirect)
 
 	return logRequests(mux)

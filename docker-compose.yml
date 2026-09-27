@@ -1,5 +1,5 @@
 x-api-env: &api-env
-  DATABASE_URL: postgres://${POSTGRES_USER:-shorty}:${POSTGRES_PASSWORD:-shorty}@db:5432/${POSTGRES_DB:-shorty}?sslmode=disable
+  DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shorty}:${POSTGRES_PASSWORD:-shorty}@db:5432/${POSTGRES_DB:-shorty}?sslmode=disable}
   JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
   BASE_URL: ${BASE_URL:-http://localhost:8080}
   COOKIE_SECURE: ${COOKIE_SECURE:-false}
@@ -22,6 +22,7 @@ services:
 
   migrate:
     build: ./api
+    image: shorty-api:${RELEASE:-dev}
     command: ["migrate"]
     environment: *api-env
     depends_on:
@@ -30,6 +31,7 @@ services:
 
   api:
     build: ./api
+    image: shorty-api:${RELEASE:-dev}
     environment: *api-env
     restart: unless-stopped
     depends_on:
@@ -42,6 +44,7 @@ services:
 
   web:
     build: ./web
+    image: shorty-web:${RELEASE:-dev}
     environment:
       PORT: 80
       API_ADDR: api:8080

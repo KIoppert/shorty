@@ -10,7 +10,7 @@ async function api(method, path, body) {
   });
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
-  if (res.status === 401 && state.user) showAuth();
+  if (res.status === 401 && state.user) showAuth(data.error);
   if (!res.ok) throw new Error(data.error || "Сервер не ответил, попробуйте ещё раз");
   return data;
 }
@@ -46,8 +46,9 @@ async function copy(text) {
   toast("Ссылка скопирована");
 }
 
-function showAuth() {
+function showAuth(message) {
   state.user = null;
+  $("#auth-form .error").textContent = typeof message === "string" ? message : "";
   $("#app").hidden = true;
   $("#auth").hidden = false;
   $("#details").close();
@@ -56,10 +57,25 @@ function showAuth() {
 async function showApp(user) {
   state.user = user;
   $("#user-email").textContent = user.email;
+  $("#nav").hidden = !user.is_admin;
   $("#auth").hidden = true;
   $("#app").hidden = false;
-  state.links = await api("GET", "/api/links");
-  renderLinks();
+  await route();
+}
+
+async function route() {
+  if (!state.user) return;
+  const view = location.hash === "#admin" && state.user.is_admin ? "admin" : "links";
+  $("#view-links").hidden = view !== "links";
+  $("#view-admin").hidden = view !== "admin";
+  document.querySelectorAll("[data-view]").forEach((a) => a.toggleAttribute("aria-current", a.dataset.view === view));
+
+  if (view === "admin") {
+    await loadAdmin();
+  } else {
+    state.links = await api("GET", "/api/links");
+    renderLinks();
+  }
 }
 
 function setAuthMode(mode) {
@@ -240,5 +256,7 @@ $("#d-delete").addEventListener("click", async () => {
   $("#details").close();
   toast("Ссылка удалена");
 });
+
+window.addEventListener("hashchange", () => route().catch((err) => toast(err.message)));
 
 api("GET", "/api/me").then(showApp).catch(showAuth);
