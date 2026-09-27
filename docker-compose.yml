@@ -1,0 +1,56 @@
+x-api-env: &api-env
+  DATABASE_URL: postgres://${POSTGRES_USER:-shorty}:${POSTGRES_PASSWORD:-shorty}@db:5432/${POSTGRES_DB:-shorty}?sslmode=disable
+  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+  BASE_URL: ${BASE_URL:-http://localhost:8080}
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  TOKEN_TTL: ${TOKEN_TTL:-168h}
+  PORT: 8080
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-shorty}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shorty}
+      POSTGRES_DB: ${POSTGRES_DB:-shorty}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      retries: 30
+
+  migrate:
+    build: ./api
+    command: ["migrate"]
+    environment: *api-env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: ./api
+    environment: *api-env
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 5s
+      retries: 10
+
+  web:
+    build: ./web
+    environment:
+      PORT: 80
+      API_ADDR: api:8080
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:

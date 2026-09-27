@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>shorty</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <main id="auth" class="auth" hidden>
+    <section class="ticket ticket--auth">
+      <div class="stub"><span class="logo logo--vertical">shorty</span></div>
+      <form id="auth-form" class="ticket__body" novalidate>
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" data-mode="login" aria-selected="true">Вход</button>
+          <button type="button" role="tab" data-mode="register" aria-selected="false">Регистрация</button>
+        </div>
+        <label class="field">
+          <span>Email</span>
+          <input name="email" type="email" autocomplete="email" required>
+        </label>
+        <label class="field">
+          <span>Пароль</span>
+          <input name="password" type="password" autocomplete="current-password" minlength="8" required>
+        </label>
+        <p class="error" aria-live="polite"></p>
+        <button class="btn btn--primary" type="submit">Войти</button>
+      </form>
+    </section>
+  </main>
+
+  <div id="app" hidden>
+    <header class="topbar">
+      <span class="logo">shorty</span>
+      <div class="topbar__user">
+        <span id="user-email"></span>
+        <button id="logout" class="btn btn--ghost">Выйти</button>
+      </div>
+    </header>
+
+    <main class="page">
+      <form id="create-form" class="create" novalidate>
+        <label class="create__label" for="create-url">Вставьте длинную ссылку</label>
+        <div class="create__row">
+          <input id="create-url" name="url" type="url" placeholder="https://" required autocomplete="off">
+          <button class="btn btn--primary" type="submit">Сократить</button>
+        </div>
+        <details class="create__more">
+          <summary>Свой алиас, название, срок действия</summary>
+          <div class="create__grid">
+            <label class="field">
+              <span>Алиас</span>
+              <input name="alias" placeholder="my-cv" autocomplete="off">
+            </label>
+            <label class="field">
+              <span>Название</span>
+              <input name="title" placeholder="Резюме" autocomplete="off">
+            </label>
+            <label class="field">
+              <span>Работает до</span>
+              <input name="expires_at" type="datetime-local">
+            </label>
+          </div>
+        </details>
+        <p class="error" aria-live="polite"></p>
+      </form>
+
+      <section class="links">
+        <h2 class="links__title">Мои ссылки <span id="links-count"></span></h2>
+        <p id="links-empty" class="empty" hidden>Здесь появятся ваши короткие ссылки. Вставьте первую длинную ссылку в поле выше.</p>
+        <ul id="links" class="links__list"></ul>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <button id="delete-account" class="link-danger">Удалить аккаунт</button>
+    </footer>
+  </div>
+
+  <template id="ticket-tpl">
+    <li class="ticket ticket--link">
+      <button class="stub" type="button" data-action="copy">
+        <span class="stub__code"></span>
+        <span class="stub__hint">копировать</span>
+      </button>
+      <button class="ticket__body" type="button" data-action="open">
+        <span class="ticket__title"></span>
+        <span class="ticket__url"></span>
+        <span class="ticket__meta"></span>
+      </button>
+    </li>
+  </template>
+
+  <dialog id="details" class="details">
+    <form method="dialog" class="details__close"><button class="btn btn--ghost" aria-label="Закрыть">✕</button></form>
+    <header class="details__head">
+      <a id="d-short" class="details__short" target="_blank" rel="noopener"></a>
+      <button id="d-copy" class="btn btn--ghost">Копировать</button>
+    </header>
+
+    <div class="details__grid">
+      <figure class="qr">
+        <img id="d-qr" alt="QR-код короткой ссылки" width="200" height="200">
+        <a id="d-qr-download" class="btn btn--ghost" download>Скачать PNG</a>
+      </figure>
+
+      <section class="stats">
+        <p class="stats__total"><span id="d-total"></span> <span id="d-total-label"></span></p>
+        <div id="d-chart" class="chart" aria-label="Переходы за 14 дней"></div>
+        <ul id="d-recent" class="recent"></ul>
+      </section>
+    </div>
+
+    <form id="edit-form" class="edit" novalidate>
+      <label class="field field--wide">
+        <span>Куда ведёт</span>
+        <input name="url" type="url" required>
+      </label>
+      <label class="field">
+        <span>Название</span>
+        <input name="title">
+      </label>
+      <label class="field">
+        <span>Работает до</span>
+        <input name="expires_at" type="datetime-local">
+      </label>
+      <label class="switch">
+        <input name="enabled" type="checkbox">
+        <span>Ссылка включена</span>
+      </label>
+      <p class="error" aria-live="polite"></p>
+      <div class="edit__actions">
+        <button class="btn btn--primary" type="submit">Сохранить</button>
+        <button id="d-delete" class="link-danger" type="button">Удалить ссылку</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status"></div>
+</body>
+</html>
