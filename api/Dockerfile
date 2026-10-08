@@ -6,8 +6,8 @@ COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /shorty .
 
 FROM alpine:3.22
-RUN adduser -D -H app
-USER app
+RUN adduser -D -H -u 10001 app
+USER 10001
 COPY --from=build /shorty /usr/local/bin/shorty
 EXPOSE 8080
 ENTRYPOINT ["shorty"]

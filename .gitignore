@@ -1,3 +1,4 @@
 .env
 *.zip
 /api/shorty
+/k8s/secret.env
