@@ -14,33 +14,14 @@ spec:
     spec:
       containers:
         - name: web
-          image: shorty-web
-          imagePullPolicy: IfNotPresent
+          image: shorty-web:dev
           ports:
-            - name: http
-              containerPort: 80
+            - containerPort: 80
           env:
             - name: PORT
               value: "80"
             - name: API_ADDR
               value: api:8080
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
-            periodSeconds: 5
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          resources:
-            requests:
-              cpu: 25m
-              memory: 16Mi
-            limits:
-              memory: 64Mi
 ---
 apiVersion: v1
 kind: Service
@@ -51,7 +32,5 @@ spec:
   selector:
     app: web
   ports:
-    - name: http
-      port: 80
-      targetPort: http
+    - port: 80
       nodePort: 30080

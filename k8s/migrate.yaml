@@ -3,33 +3,15 @@ kind: Job
 metadata:
   name: migrate
 spec:
-  backoffLimit: 4
   template:
-    metadata:
-      labels:
-        app: migrate
     spec:
       restartPolicy: OnFailure
-      initContainers:
-        - name: wait-for-postgres
-          image: postgres:17-alpine
-          envFrom:
-            - configMapRef:
-                name: shorty-config
-          command: ["sh", "-c", "until pg_isready -h postgres -U \"$POSTGRES_USER\"; do sleep 2; done"]
       containers:
         - name: migrate
-          image: shorty-api
-          imagePullPolicy: IfNotPresent
+          image: shorty-api:dev
           args: ["migrate"]
           envFrom:
             - configMapRef:
                 name: shorty-config
             - secretRef:
                 name: shorty-secret
-          env:
-            - name: DATABASE_URL
-              value: postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)?sslmode=disable
-          securityContext:
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false

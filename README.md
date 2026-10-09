@@ -120,21 +120,20 @@ eval $(minikube docker-env)
 docker build -t shorty-api:dev ./api
 docker build -t shorty-web:dev ./web
 
-cp k8s/secret.env.example k8s/secret.env    # 🔑 поменять пароль и JWT_SECRET
-kubectl apply -k k8s/
-kubectl get pods -n shorty -w
+kubectl apply -f k8s/
+kubectl get pods
 
-kubectl port-forward -n shorty svc/web 8080:80   # 👉 http://localhost:8080
+kubectl port-forward svc/web 8080:80   # 👉 http://localhost:8080
 ```
 
 | Команда | Что делает |
 |---|---|
-| `kubectl -n shorty exec deploy/api -- shorty promote you@example.com` | 👑 выдать права админа |
-| `kubectl -n shorty scale deployment/api --replicas=4` | 📈 больше реплик api |
-| `kubectl -n shorty logs -l app=api --prefix --tail=5` | 📜 какая реплика обработала запросы |
-| `kubectl delete -k k8s/` | 🧹 удалить всё |
+| `kubectl exec deploy/api -- shorty promote you@example.com` | 👑 выдать права админа |
+| `kubectl scale deployment/api --replicas=4` | 📈 больше реплик api |
+| `kubectl logs -l app=api --prefix --tail=5` | 📜 какая реплика обработала запросы |
+| `kubectl delete -f k8s/` | 🧹 удалить всё |
 
-Подробности про манифесты и устройство — в [k8s/Отчёт.md](k8s/Отчёт.md) 📝
+Пароли для кластера лежат в `k8s/secret.yaml` 🔑 Подробности — в [k8s/Отчёт.md](k8s/Отчёт.md) 📝
 
 ## 🛠️ Полезные команды
 
@@ -160,7 +159,7 @@ api/
   admin.go       эндпоинты админки
   http.go        роутинг, JSON-хелперы, логирование запросов
   migrations/    SQL-схема
-k8s/             манифесты Kubernetes (kustomize) и отчёт по ним
+k8s/             манифесты Kubernetes и отчёт по ним
 web/
   public/        index.html и assets (css, js, шрифты, favicon)
   nginx.conf.template
