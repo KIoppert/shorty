@@ -142,7 +142,7 @@ kubectl apply -f k8s/logging/
 kubectl port-forward svc/victorialogs 9428:9428   # 👉 http://localhost:9428/select/vmui/
 ```
 
-Приложение пишет JSON в stdout, Vector (DaemonSet) собирает логи всех подов и отправляет их в VictoriaLogs, а vmalert поднимает алерт, если появились ошибки 🚨 Примеры запросов — в [k8s/logging/Отчёт.md](k8s/logging/Отчёт.md) 🔎
+Приложение пишет JSON в stdout, Vector (DaemonSet) собирает логи всех подов и отправляет их в VictoriaLogs 🚚 Нагенерировать трафик для демо: `./k8s/logging/traffic.sh http://localhost:8080` Примеры запросов — в [k8s/logging/Отчёт.md](k8s/logging/Отчёт.md) 🔎
 
 ## 🛠️ Полезные команды
 
@@ -169,7 +169,7 @@ api/
   http.go        роутинг, JSON-хелперы, логирование запросов
   migrations/    SQL-схема
 k8s/             манифесты Kubernetes и отчёт по ним
-  logging/       VictoriaLogs, Vector, vmalert и отчёт по логам
+  logging/       VictoriaLogs, Vector, скрипт трафика и отчёт по логам
 web/
   public/        index.html и assets (css, js, шрифты, favicon)
   nginx.conf.template

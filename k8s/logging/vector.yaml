@@ -37,7 +37,7 @@ data:
       pods:
         type: kubernetes_logs
         extra_field_selector: metadata.namespace=default
-        extra_label_selector: app notin (vector,victorialogs,vmalert)
+        extra_label_selector: app notin (vector,victorialogs)
         glob_minimum_cooldown_ms: 5000
 
     transforms:
