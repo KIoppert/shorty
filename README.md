@@ -135,6 +135,15 @@ kubectl port-forward svc/web 8080:80   # 👉 http://localhost:8080
 
 Пароли для кластера лежат в `k8s/secret.yaml` 🔑 Подробности — в [k8s/Отчёт.md](k8s/Отчёт.md) 📝
 
+## 📜 Логи (VictoriaLogs)
+
+```bash
+kubectl apply -f k8s/logging/
+kubectl port-forward svc/victorialogs 9428:9428   # 👉 http://localhost:9428/select/vmui/
+```
+
+Приложение пишет JSON в stdout, Vector (DaemonSet) собирает логи всех подов и отправляет их в VictoriaLogs, а vmalert поднимает алерт, если появились ошибки 🚨 Примеры запросов — в [k8s/logging/Отчёт.md](k8s/logging/Отчёт.md) 🔎
+
 ## 🛠️ Полезные команды
 
 ```bash
@@ -160,6 +169,7 @@ api/
   http.go        роутинг, JSON-хелперы, логирование запросов
   migrations/    SQL-схема
 k8s/             манифесты Kubernetes и отчёт по ним
+  logging/       VictoriaLogs, Vector, vmalert и отчёт по логам
 web/
   public/        index.html и assets (css, js, шрифты, favicon)
   nginx.conf.template

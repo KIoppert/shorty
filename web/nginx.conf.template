@@ -1,6 +1,26 @@
+map $status $log_level {
+    ~^5     error;
+    ~^4     warn;
+    default info;
+}
+
+log_format json escape=json '{'
+    '"timestamp":"$time_iso8601",'
+    '"level":"$log_level",'
+    '"message":"$request_method $request_uri $status",'
+    '"service.name":"shorty-web",'
+    '"method":"$request_method",'
+    '"path":"$uri",'
+    '"status":$status,'
+    '"duration_s":$request_time,'
+    '"bytes":$body_bytes_sent,'
+    '"user_agent":"$http_user_agent"'
+'}';
+
 server {
     listen ${PORT};
     root /usr/share/nginx/html;
+    access_log /dev/stdout json;
 
     location = / {
         try_files /index.html =404;

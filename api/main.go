@@ -16,12 +16,28 @@ import (
 )
 
 func main() {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{ReplaceAttr: logKeys})
+	slog.SetDefault(slog.New(handler).With("service.name", "shorty-api"))
 
 	if err := run(); err != nil {
 		slog.Error("fatal", "err", err)
 		os.Exit(1)
 	}
+}
+
+func logKeys(groups []string, a slog.Attr) slog.Attr {
+	if len(groups) > 0 {
+		return a
+	}
+	switch a.Key {
+	case slog.TimeKey:
+		a.Key = "timestamp"
+	case slog.LevelKey:
+		a.Value = slog.StringValue(strings.ToLower(a.Value.String()))
+	case slog.MessageKey:
+		a.Key = "message"
+	}
+	return a
 }
 
 func run() error {
