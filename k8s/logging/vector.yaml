@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: vector
+  namespace: logging
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -23,12 +24,13 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: vector
-    namespace: default
+    namespace: logging
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: vector-config
+  namespace: logging
 data:
   vector.yaml: |
     data_dir: /vector-data-dir
@@ -36,8 +38,7 @@ data:
     sources:
       pods:
         type: kubernetes_logs
-        extra_field_selector: metadata.namespace=default
-        extra_label_selector: app notin (vector,victorialogs)
+        extra_field_selector: metadata.namespace=shorty
         glob_minimum_cooldown_ms: 5000
 
     transforms:
@@ -78,6 +79,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: vector
+  namespace: logging
 spec:
   selector:
     matchLabels:

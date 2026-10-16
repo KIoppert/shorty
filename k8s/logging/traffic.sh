@@ -1,7 +1,7 @@
 #!/bin/bash
 set -u
 
-URL=${1:-http://localhost:8080}
+URL=${1:-http://shorty.localhost:8080}
 JAR=$(mktemp)
 hit() { curl -s -o /dev/null "$@"; }
 
@@ -31,12 +31,12 @@ for code in nope missing old-link; do hit "$URL/$code"; done
 for i in $(seq 1 15); do hit "$URL/"; hit -b "$JAR" "$URL/api/links"; done
 
 echo "останавливаю postgres на 30 секунд"
-kubectl scale deployment/postgres --replicas=0
-kubectl wait --for=delete pod -l app=postgres --timeout=60s
+kubectl -n shorty scale statefulset/postgres --replicas=0
+kubectl -n shorty wait --for=delete pod/postgres-0 --timeout=60s
 for i in $(seq 1 20); do hit "$URL/go-doc"; hit -b "$JAR" "$URL/api/links"; done
 sleep 20
-kubectl scale deployment/postgres --replicas=1
-kubectl rollout status deployment/postgres
+kubectl -n shorty scale statefulset/postgres --replicas=1
+kubectl -n shorty rollout status statefulset/postgres
 until curl -sf "$URL/healthz" >/dev/null; do sleep 2; done
 
 rm -f "$JAR"

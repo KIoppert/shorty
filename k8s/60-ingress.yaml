@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shorty
+  namespace: shorty
+  labels:
+    app.kubernetes.io/part-of: shorty
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: shorty.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80

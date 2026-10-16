@@ -115,34 +115,30 @@ curl -i localhost:8080/go
 ## ☸️ Kubernetes (minikube)
 
 ```bash
-minikube start
-eval $(minikube docker-env)
-docker build -t shorty-api:dev ./api
-docker build -t shorty-web:dev ./web
-
-kubectl apply -f k8s/
-kubectl get pods
-
-kubectl port-forward svc/web 8080:80   # 👉 http://localhost:8080
+./run.sh   # 🚀 minikube + ingress + сборка образов + деплой + ожидание готовности
+kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 8080:80   # 🚇 в отдельном терминале
 ```
+
+Откройте 👉 http://shorty.localhost:8080
 
 | Команда | Что делает |
 |---|---|
-| `kubectl exec deploy/api -- shorty promote you@example.com` | 👑 выдать права админа |
-| `kubectl scale deployment/api --replicas=4` | 📈 больше реплик api |
-| `kubectl logs -l app=api --prefix --tail=5` | 📜 какая реплика обработала запросы |
-| `kubectl delete -f k8s/` | 🧹 удалить всё |
+| `kubectl -n shorty get pods,svc,ingress` | 👀 что запущено |
+| `kubectl -n shorty exec deploy/api -- shorty promote you@example.com` | 👑 выдать права админа |
+| `kubectl -n shorty scale deployment/api --replicas=4` | 📈 больше реплик api |
+| `kubectl -n shorty logs -l app.kubernetes.io/name=api --prefix --tail=5` | 📜 какая реплика обработала запросы |
+| `kubectl delete -f k8s/` | 🧹 удалить всё вместе с данными |
 
-Пароли для кластера лежат в `k8s/secret.yaml` 🔑 Подробности — в [k8s/Отчёт.md](k8s/Отчёт.md) 📝
+Пароли для кластера лежат в `k8s/11-secrets.yaml` 🔑 Подробности — в [k8s/Отчёт.md](k8s/Отчёт.md) 📝
 
 ## 📜 Логи (VictoriaLogs)
 
 ```bash
 kubectl apply -f k8s/logging/
-kubectl port-forward svc/victorialogs 9428:9428   # 👉 http://localhost:9428/select/vmui/
+kubectl -n logging port-forward svc/victorialogs 9428:9428   # 👉 http://localhost:9428/select/vmui/
 ```
 
-Приложение пишет JSON в stdout, Vector (DaemonSet) собирает логи всех подов и отправляет их в VictoriaLogs 🚚 Нагенерировать трафик для демо: `./k8s/logging/traffic.sh http://localhost:8080` Примеры запросов — в [k8s/logging/Отчёт.md](k8s/logging/Отчёт.md) 🔎
+Приложение пишет JSON в stdout, Vector (DaemonSet) собирает логи всех подов из namespace `shorty` и отправляет их в VictoriaLogs 🚚 Нагенерировать трафик для демо: `./k8s/logging/traffic.sh` 🔎 Подробности — в [k8s/logging/Отчёт.md](k8s/logging/Отчёт.md)
 
 ## 🛠️ Полезные команды
 
@@ -168,11 +164,12 @@ api/
   admin.go       эндпоинты админки
   http.go        роутинг, JSON-хелперы, логирование запросов
   migrations/    SQL-схема
-k8s/             манифесты Kubernetes и отчёт по ним
+k8s/             манифесты Kubernetes (по порядку применения) и отчёт по ним
   logging/       VictoriaLogs, Vector, скрипт трафика и отчёт по логам
 web/
   public/        index.html и assets (css, js, шрифты, favicon)
   nginx.conf.template
 docker-compose.yml
+run.sh           🚀 полный сценарий деплоя в minikube
 Отчёт.md         📝 отчёт по 12 факторам
 ```
