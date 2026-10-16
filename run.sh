@@ -10,6 +10,9 @@ kubectl -n ingress-nginx rollout status deployment/ingress-nginx-controller --ti
 echo "==> сборка образов внутри minikube"
 minikube image build -t shorty-api:dev ./api
 minikube image build -t shorty-web:dev ./web
+for image in shorty-api:dev shorty-web:dev; do
+  minikube image ls | grep -q "$image" || { echo "образ $image не собрался, смотрите вывод сборки выше"; exit 1; }
+done
 
 echo "==> деплой"
 kubectl delete job migrate -n shorty --ignore-not-found
