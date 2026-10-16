@@ -8,11 +8,8 @@ minikube addons enable ingress
 kubectl -n ingress-nginx rollout status deployment/ingress-nginx-controller --timeout=180s
 
 echo "==> сборка образов внутри minikube"
-eval "$(minikube docker-env)"
-docker build -t shorty-api:dev ./api
-docker build -t shorty-web:dev ./web
-minikube image load shorty-api:dev
-minikube image load shorty-web:dev
+minikube image build -t shorty-api:dev ./api
+minikube image build -t shorty-web:dev ./web
 
 echo "==> деплой"
 kubectl delete job migrate -n shorty --ignore-not-found
