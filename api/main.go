@@ -77,17 +77,18 @@ func run() error {
 
 func serve(ctx context.Context, cfg Config, db *pgxpool.Pool) error {
 	app := &App{cfg: cfg, store: &Store{db: db}}
-	srv := &http.Server{
-		Addr:              ":" + cfg.Port,
-		Handler:           app.routes(),
-		ReadHeaderTimeout: 5 * time.Second,
+	servers := []*http.Server{
+		{Addr: ":" + cfg.Port, Handler: app.routes(), ReadHeaderTimeout: 5 * time.Second},
+		{Addr: ":" + cfg.MetricsPort, Handler: metricsHandler(), ReadHeaderTimeout: 5 * time.Second},
 	}
 
-	errs := make(chan error, 1)
-	go func() {
-		slog.Info("listening", "port", cfg.Port)
-		errs <- srv.ListenAndServe()
-	}()
+	errs := make(chan error, len(servers))
+	for _, srv := range servers {
+		go func() {
+			slog.Info("listening", "addr", srv.Addr)
+			errs <- srv.ListenAndServe()
+		}()
+	}
 
 	select {
 	case err := <-errs:
@@ -98,8 +99,10 @@ func serve(ctx context.Context, cfg Config, db *pgxpool.Pool) error {
 	slog.Info("shutting down")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
+	for _, srv := range servers {
+		if err := srv.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
 	}
 	return nil
 }

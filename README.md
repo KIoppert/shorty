@@ -140,6 +140,16 @@ kubectl -n logging port-forward svc/victorialogs 9428:9428   # 👉 http://local
 
 Приложение пишет JSON в stdout, Vector (DaemonSet) собирает логи всех подов из namespace `shorty` и отправляет их в VictoriaLogs 🚚 Нагенерировать трафик для демо: `./k8s/logging/traffic.sh` 🔎 Подробности — в [k8s/logging/Отчёт.md](k8s/logging/Отчёт.md)
 
+## 📊 Метрики (VictoriaMetrics)
+
+```bash
+helm repo add vm https://victoriametrics.github.io/helm-charts/ && helm repo update
+helm install vm-single vm/victoria-metrics-single -n monitoring --create-namespace -f k8s/monitoring/vm-values.yaml
+kubectl port-forward svc/vm-single-victoria-metrics-single-server -n monitoring 8428:8428   # 👉 http://localhost:8428/vmui
+```
+
+`api` отдаёт метрики рантайма Go, HTTP и бизнес-метрики на `:9091/metrics`, PostgreSQL через `postgres-exporter` на `:9187` 📈 VictoriaMetrics находит их сама по аннотациям `prometheus.io/*`. Подробности — в [k8s/monitoring/Отчёт.md](k8s/monitoring/Отчёт.md)
+
 ## 🛠️ Полезные команды
 
 ```bash
@@ -163,9 +173,11 @@ api/
   links.go       CRUD ссылок, статистика, QR, редирект
   admin.go       эндпоинты админки
   http.go        роутинг, JSON-хелперы, логирование запросов
+  metrics.go     метрики Prometheus: рантайм, HTTP, бизнес
   migrations/    SQL-схема
 k8s/             манифесты Kubernetes (по порядку применения) и отчёт по ним
   logging/       VictoriaLogs, Vector, скрипт трафика и отчёт по логам
+  monitoring/    values для VictoriaMetrics и отчёт по метрикам
 web/
   public/        index.html и assets (css, js, шрифты, favicon)
   nginx.conf.template

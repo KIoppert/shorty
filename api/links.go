@@ -86,6 +86,11 @@ func (a *App) createLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if in.Alias != "" {
+		linksCreated.WithLabelValues("custom").Inc()
+	} else {
+		linksCreated.WithLabelValues("random").Inc()
+	}
 	a.fillShortURL(&link)
 	writeJSON(w, http.StatusCreated, link)
 }
@@ -169,6 +174,7 @@ func (a *App) linkQR(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
+	qrCodes.Inc()
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "private, max-age=3600")
 	w.Write(png)
@@ -177,6 +183,7 @@ func (a *App) linkQR(w http.ResponseWriter, r *http.Request) {
 func (a *App) redirect(w http.ResponseWriter, r *http.Request) {
 	link, err := a.store.LinkByCode(r.Context(), r.PathValue("code"))
 	if errors.Is(err, ErrNotFound) {
+		redirects.WithLabelValues("not_found").Inc()
 		http.Error(w, "Такой короткой ссылки нет", http.StatusNotFound)
 		return
 	}
@@ -185,6 +192,7 @@ func (a *App) redirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !link.Enabled || (link.ExpiresAt != nil && link.ExpiresAt.Before(time.Now())) {
+		redirects.WithLabelValues("gone").Inc()
 		http.Error(w, "Ссылка больше не работает", http.StatusGone)
 		return
 	}
@@ -193,6 +201,7 @@ func (a *App) redirect(w http.ResponseWriter, r *http.Request) {
 		slog.Error("record click", "err", err, "code", link.Code)
 	}
 	w.Header().Set("Cache-Control", "no-store")
+	redirects.WithLabelValues("ok").Inc()
 	http.Redirect(w, r, link.URL, http.StatusFound)
 }
 

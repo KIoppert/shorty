@@ -154,6 +154,7 @@ func (a *App) register(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
+	usersRegistered.Inc()
 
 	a.startSession(w, user)
 }
@@ -169,13 +170,16 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil || !checkPassword(user.PasswordHash, in.Password) {
+		logins.WithLabelValues("failure").Inc()
 		writeError(w, http.StatusUnauthorized, "неверный email или пароль")
 		return
 	}
 	if user.BannedAt != nil {
+		logins.WithLabelValues("banned").Inc()
 		writeError(w, http.StatusForbidden, "аккаунт заблокирован")
 		return
 	}
+	logins.WithLabelValues("success").Inc()
 
 	a.startSession(w, user)
 }

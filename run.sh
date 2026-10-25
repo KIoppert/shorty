@@ -17,6 +17,7 @@ done
 echo "==> деплой"
 kubectl delete job migrate -n shorty --ignore-not-found
 kubectl apply -f k8s/
+kubectl -n shorty rollout restart deployment/api deployment/web
 
 echo "==> ожидание готовности"
 kubectl -n shorty rollout status statefulset/postgres --timeout=180s

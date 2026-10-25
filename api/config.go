@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	Port         string
+	MetricsPort  string
 	DatabaseURL  string
 	JWTSecret    []byte
 	TokenTTL     time.Duration
@@ -19,6 +20,7 @@ type Config struct {
 func loadConfig() (Config, error) {
 	cfg := Config{
 		Port:        env("PORT", "8080"),
+		MetricsPort: env("METRICS_PORT", "9091"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		JWTSecret:   []byte(os.Getenv("JWT_SECRET")),
 		BaseURL:     env("BASE_URL", "http://localhost:8080"),

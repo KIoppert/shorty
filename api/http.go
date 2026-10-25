@@ -137,6 +137,7 @@ func logRequests(next http.Handler) http.Handler {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
+		observeRequest(r, rec.status, time.Since(start))
 
 		level := slog.LevelInfo
 		switch {

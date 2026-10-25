@@ -35,6 +35,10 @@ spec:
         app.kubernetes.io/name: postgres
         app.kubernetes.io/component: database
         app.kubernetes.io/part-of: shorty
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9187"
+        prometheus.io/path: /metrics
     spec:
       containers:
         - name: postgres
@@ -67,6 +71,42 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+        - name: postgres-exporter
+          image: prometheuscommunity/postgres-exporter:v0.20.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: metrics
+              containerPort: 9187
+          env:
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: POSTGRES_DB
+            - name: DATA_SOURCE_URI
+              value: localhost:5432/$(DB_NAME)?sslmode=disable
+            - name: DATA_SOURCE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: POSTGRES_USER
+            - name: DATA_SOURCE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: POSTGRES_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9187
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi
   volumeClaimTemplates:
     - metadata:
         name: data

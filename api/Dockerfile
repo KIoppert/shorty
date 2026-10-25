@@ -9,6 +9,6 @@ FROM alpine:3.22
 RUN adduser -D -H -u 10001 app
 USER 10001
 COPY --from=build /shorty /usr/local/bin/shorty
-EXPOSE 8080
+EXPOSE 8080 9091
 ENTRYPOINT ["shorty"]
 CMD ["serve"]
