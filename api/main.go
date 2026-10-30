@@ -41,24 +41,28 @@ func logKeys(groups []string, a slog.Attr) slog.Attr {
 }
 
 func run() error {
-	cfg, err := loadConfig()
-	if err != nil {
-		return err
+	command := "serve"
+	if len(os.Args) > 1 {
+		command = os.Args[1]
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	if command == "probe" {
+		return probe(ctx)
+	}
+
+	cfg, err := loadConfig()
+	if err != nil {
+		return err
+	}
 
 	db, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
-
-	command := "serve"
-	if len(os.Args) > 1 {
-		command = os.Args[1]
-	}
 
 	switch command {
 	case "serve":
@@ -71,7 +75,7 @@ func run() error {
 		}
 		return promote(ctx, db, os.Args[2])
 	default:
-		return fmt.Errorf("unknown command %q, use serve, migrate or promote", command)
+		return fmt.Errorf("unknown command %q, use serve, migrate, promote or probe", command)
 	}
 }
 

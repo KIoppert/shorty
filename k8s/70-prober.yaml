@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prober
+  namespace: shorty
+  labels:
+    app.kubernetes.io/name: prober
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: shorty
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prober
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prober
+        app.kubernetes.io/component: monitoring
+        app.kubernetes.io/part-of: shorty
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: /metrics
+    spec:
+      containers:
+        - name: prober
+          image: shorty-api:dev
+          imagePullPolicy: Never
+          args: ["probe"]
+          ports:
+            - name: metrics
+              containerPort: 9091
+          env:
+            - name: PROBE_TARGET
+              value: http://web
+            - name: PROBE_INTERVAL
+              value: 10s
+            - name: PROBE_EMAIL
+              value: prober@shorty.local
+            - name: PROBE_PASSWORD
+              value: prober-password
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

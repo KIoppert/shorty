@@ -76,6 +76,8 @@ docker compose run --rm api promote you@example.com
 | `COOKIE_SECURE` | `false` | `true`, если сайт работает по HTTPS |
 | `BASE_URL` | `http://localhost:8080` | Публичный адрес для коротких ссылок и QR |
 | `PORT` | `8080` | Порт, который слушает `api` |
+| `FAULT_ERROR_RATE` | `0` | Доля запросов, на которые `api` нарочно отвечает 500 (для демо SLO) |
+| `FAULT_DELAY` | `0s` | Искусственная задержка каждого запроса (для демо SLO) |
 | `HTTP_PORT` | `8080` | Порт `web` на хосте |
 
 ## 📡 API
@@ -150,6 +152,17 @@ kubectl port-forward svc/vm-single-victoria-metrics-single-server -n monitoring 
 
 `api` отдаёт метрики рантайма Go, HTTP и бизнес-метрики на `:9091/metrics`, PostgreSQL через `postgres-exporter` на `:9187` 📈 VictoriaMetrics находит их сама по аннотациям `prometheus.io/*`. Подробности — в [k8s/monitoring/Отчёт.md](k8s/monitoring/Отчёт.md)
 
+## 🎯 SLO
+
+```bash
+./k8s/slo/load.sh                                                      # 🚦 постоянная нагрузка
+kubectl -n shorty set env deployment/api FAULT_ERROR_RATE=0.2          # 💥 20% ответов 500
+kubectl -n shorty set env deployment/api FAULT_ERROR_RATE- FAULT_DELAY=400ms   # 🐢 медленные ответы
+kubectl -n shorty set env deployment/api FAULT_DELAY-                  # ✅ вернуть как было
+```
+
+Пробер (`shorty probe`, Deployment `prober`) каждые 10 секунд открывает фронтенд, `/healthz` и короткую ссылку и отдаёт результаты в VictoriaMetrics 🤖 Формулы SLI, SLO и SLA и графики — в [k8s/slo/Отчёт.md](k8s/slo/Отчёт.md)
+
 ## 🛠️ Полезные команды
 
 ```bash
@@ -174,10 +187,13 @@ api/
   admin.go       эндпоинты админки
   http.go        роутинг, JSON-хелперы, логирование запросов
   metrics.go     метрики Prometheus: рантайм, HTTP, бизнес
+  probe.go       пробер: синтетические проверки для SLI
+  faults.go      управляемые сбои для демонстрации SLO
   migrations/    SQL-схема
 k8s/             манифесты Kubernetes (по порядку применения) и отчёт по ним
   logging/       VictoriaLogs, Vector, скрипт трафика и отчёт по логам
   monitoring/    values для VictoriaMetrics и отчёт по метрикам
+  slo/           нагрузка и отчёт по SLI, SLO и SLA
 web/
   public/        index.html и assets (css, js, шрифты, favicon)
   nginx.conf.template

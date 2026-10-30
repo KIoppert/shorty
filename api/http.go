@@ -47,7 +47,7 @@ func (a *App) routes() http.Handler {
 
 	mux.HandleFunc("GET /{code}", a.redirect)
 
-	return logRequests(mux)
+	return logRequests(injectFaults(a.cfg, mux))
 }
 
 func (a *App) health(w http.ResponseWriter, r *http.Request) {

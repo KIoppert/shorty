@@ -17,13 +17,14 @@ done
 echo "==> деплой"
 kubectl delete job migrate -n shorty --ignore-not-found
 kubectl apply -f k8s/
-kubectl -n shorty rollout restart deployment/api deployment/web
+kubectl -n shorty rollout restart deployment/api deployment/web deployment/prober
 
 echo "==> ожидание готовности"
 kubectl -n shorty rollout status statefulset/postgres --timeout=180s
 kubectl -n shorty wait --for=condition=complete job/migrate --timeout=180s
 kubectl -n shorty rollout status deployment/api --timeout=180s
 kubectl -n shorty rollout status deployment/web --timeout=180s
+kubectl -n shorty rollout status deployment/prober --timeout=180s
 kubectl -n shorty get pods,svc,ingress
 
 echo
