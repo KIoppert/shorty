@@ -159,7 +159,12 @@ kubectl port-forward svc/vm-single-victoria-metrics-single-server -n monitoring 
 kubectl -n shorty set env deployment/api FAULT_ERROR_RATE=0.2          # 💥 20% ответов 500
 kubectl -n shorty set env deployment/api FAULT_ERROR_RATE- FAULT_DELAY=400ms   # 🐢 медленные ответы
 kubectl -n shorty set env deployment/api FAULT_DELAY-                  # ✅ вернуть как было
+
+kubectl apply -f k8s/slo/dashboard.yaml                                # 📊 дашборд для vmui
+helm upgrade vm-single vm/victoria-metrics-single -n monitoring -f k8s/monitoring/vm-values.yaml -f k8s/slo/vm-dashboard-values.yaml
 ```
+
+Дашборд: 👉 http://localhost:8428/vmui/#/dashboards
 
 Пробер (`shorty probe`, Deployment `prober`) каждые 10 секунд открывает фронтенд, `/healthz` и короткую ссылку и отдаёт результаты в VictoriaMetrics 🤖 Формулы SLI, SLO и SLA и графики — в [k8s/slo/Отчёт.md](k8s/slo/Отчёт.md)
 

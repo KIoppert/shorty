@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vmui-dashboards
+  namespace: monitoring
+data:
+  shorty-slo.json: |
+    {
+      "title": "shorty SLO",
+      "rows": [
+        {
+          "title": "SLI за последнюю минуту",
+          "panels": [
+            {
+              "title": "Доступность API",
+              "description": "SLI-1, SLO 99.5%",
+              "width": 6,
+              "expr": [
+                "sum(increase(shorty_http_requests_total{route!=\"GET /healthz\",status!~\"5..\"}[1m])) / sum(increase(shorty_http_requests_total{route!=\"GET /healthz\"}[1m]))"
+              ],
+              "alias": [
+                "доля ответов без 5xx"
+              ]
+            },
+            {
+              "title": "Скорость ответа",
+              "description": "SLI-2, SLO 99%",
+              "width": 6,
+              "expr": [
+                "sum(increase(shorty_http_request_duration_seconds_bucket{route!=\"GET /healthz\",le=\"0.25\"}[1m])) / sum(increase(shorty_http_request_duration_seconds_count{route!=\"GET /healthz\"}[1m]))"
+              ],
+              "alias": [
+                "доля запросов быстрее 250 мс"
+              ]
+            },
+            {
+              "title": "База",
+              "description": "SLI-3, SLO 99.9%",
+              "width": 6,
+              "expr": [
+                "max(pg_up) or max(shorty_probe_success) * 0"
+              ],
+              "alias": [
+                "pg_up"
+              ]
+            },
+            {
+              "title": "Пробер",
+              "description": "SLI-4, SLO 99.5%",
+              "width": 6,
+              "expr": [
+                "sum(increase(shorty_probe_total{result=\"success\"}[1m])) / sum(increase(shorty_probe_total[1m]))"
+              ],
+              "alias": [
+                "доля успешных проверок"
+              ]
+            }
+          ]
+        },
+        {
+          "title": "SLO и SLA за окно 30 минут",
+          "panels": [
+            {
+              "title": "Общий SLI: доля хороших минут",
+              "description": "",
+              "width": 12,
+              "expr": [
+                "WITH (\n  ok_errors = (sum(increase(shorty_http_requests_total{route!=\"GET /healthz\",status=~\"5..\"}[1m])) or vector(0))\n    / clamp_min(sum(increase(shorty_http_requests_total{route!=\"GET /healthz\"}[1m])), 1) <= bool 0.01,\n  ok_latency = (sum(increase(shorty_http_request_duration_seconds_count{route!=\"GET /healthz\"}[1m]))\n    - sum(increase(shorty_http_request_duration_seconds_bucket{route!=\"GET /healthz\",le=\"0.25\"}[1m])))\n    / clamp_min(sum(increase(shorty_http_request_duration_seconds_count{route!=\"GET /healthz\"}[1m])), 1) <= bool 0.05,\n  ok_db = min(min_over_time(pg_up[1m])) == bool 1,\n  ok_probes = sum(increase(shorty_probe_total{result=\"failure\"}[1m])) == bool 0,\n  good_minute = (ok_errors * ok_latency * ok_db * ok_probes) or ok_probes * 0\n)\navg_over_time(good_minute[30m:1m])",
+                "0.995",
+                "0.99"
+              ],
+              "alias": [
+                "SLI",
+                "SLO 99.5%",
+                "SLA 99%"
+              ]
+            },
+            {
+              "title": "Хорошие минуты",
+              "description": "",
+              "width": 6,
+              "expr": [
+                "WITH (\n  ok_errors = (sum(increase(shorty_http_requests_total{route!=\"GET /healthz\",status=~\"5..\"}[1m])) or vector(0))\n    / clamp_min(sum(increase(shorty_http_requests_total{route!=\"GET /healthz\"}[1m])), 1) <= bool 0.01,\n  ok_latency = (sum(increase(shorty_http_request_duration_seconds_count{route!=\"GET /healthz\"}[1m]))\n    - sum(increase(shorty_http_request_duration_seconds_bucket{route!=\"GET /healthz\",le=\"0.25\"}[1m])))\n    / clamp_min(sum(increase(shorty_http_request_duration_seconds_count{route!=\"GET /healthz\"}[1m])), 1) <= bool 0.05,\n  ok_db = min(min_over_time(pg_up[1m])) == bool 1,\n  ok_probes = sum(increase(shorty_probe_total{result=\"failure\"}[1m])) == bool 0,\n  good_minute = (ok_errors * ok_latency * ok_db * ok_probes) or ok_probes * 0\n)\ngood_minute"
+              ],
+              "alias": [
+                "1 хорошая, 0 плохая"
+              ]
+            },
+            {
+              "title": "Остаток бюджета ошибок",
+              "description": "1 бюджет цел, 0 израсходован, меньше 0 SLO нарушен",
+              "width": 6,
+              "expr": [
+                "WITH (\n  ok_errors = (sum(increase(shorty_http_requests_total{route!=\"GET /healthz\",status=~\"5..\"}[1m])) or vector(0))\n    / clamp_min(sum(increase(shorty_http_requests_total{route!=\"GET /healthz\"}[1m])), 1) <= bool 0.01,\n  ok_latency = (sum(increase(shorty_http_request_duration_seconds_count{route!=\"GET /healthz\"}[1m]))\n    - sum(increase(shorty_http_request_duration_seconds_bucket{route!=\"GET /healthz\",le=\"0.25\"}[1m])))\n    / clamp_min(sum(increase(shorty_http_request_duration_seconds_count{route!=\"GET /healthz\"}[1m])), 1) <= bool 0.05,\n  ok_db = min(min_over_time(pg_up[1m])) == bool 1,\n  ok_probes = sum(increase(shorty_probe_total{result=\"failure\"}[1m])) == bool 0,\n  good_minute = (ok_errors * ok_latency * ok_db * ok_probes) or ok_probes * 0\n)\n1 - (1 - avg_over_time(good_minute[30m:1m])) / (1 - 0.995)"
+              ],
+              "alias": [
+                "остаток бюджета"
+              ]
+            }
+          ]
+        }
+      ]
+    }

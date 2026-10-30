@@ -1,0 +1,11 @@
+server:
+  extraArgs:
+    vmui.customDashboardsPath: /dashboards
+  extraVolumes:
+    - name: dashboards
+      configMap:
+        name: vmui-dashboards
+  extraVolumeMounts:
+    - name: dashboards
+      mountPath: /dashboards
+      readOnly: true
