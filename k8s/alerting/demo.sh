@@ -11,8 +11,13 @@ case "${1:-}" in
   goroutines)
     kubectl -n shorty set env deployment/api FAULT_DELAY=20s
     kubectl -n shorty rollout status deployment/api
-    echo "держу 150 зависших запросов 2.5 минуты"
-    timeout 150 bash -c 'while true; do seq 150 | xargs -P150 -I{} curl -s -m 60 -o /dev/null "$0/nope"; done' "$URL"
+    echo "держу 150 зависших запросов 2.5 минуты, запросы идут изнутри кластера прямо в api"
+    kubectl -n shorty exec deploy/web -- sh -c '
+      end=$(( $(date +%s) + 150 ))
+      while [ $(date +%s) -lt $end ]; do
+        for i in $(seq 150); do wget -q -T 60 -O /dev/null http://api:8080/nope & done
+        wait
+      done'
     ;;
   db)
     kubectl -n shorty scale statefulset/postgres --replicas=0
