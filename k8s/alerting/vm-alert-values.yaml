@@ -1,0 +1,93 @@
+server:
+  datasource:
+    url: http://vm-single-victoria-metrics-single-server.monitoring:8428
+  notifier:
+    url: http://vm-alert-victoria-metrics-alert-alertmanager:9093
+  config:
+    alerts:
+      groups:
+        - name: shorty-service
+          interval: 15s
+          rules:
+            - alert: ShortyHighErrorRate
+              expr: |
+                sum(rate(shorty_http_requests_total{route!="GET /healthz",status=~"5.."}[1m]))
+                  / sum(rate(shorty_http_requests_total{route!="GET /healthz"}[1m])) > 0.05
+              for: 1m
+              labels:
+                severity: critical
+              annotations:
+                summary: "Более 5% запросов к api завершаются ошибкой 5xx"
+                description: "Доля ошибок {{ $value | humanizePercentage }} за последнюю минуту."
+
+            - alert: ShortyHighLatency
+              expr: |
+                histogram_quantile(0.95,
+                  sum by (le) (rate(shorty_http_request_duration_seconds_bucket{route!="GET /healthz"}[2m]))) > 0.5
+              for: 1m
+              labels:
+                severity: warning
+              annotations:
+                summary: "95% запросов к api отвечают дольше 500 мс"
+                description: "p95 времени ответа {{ $value | humanizeDuration }}."
+
+            - alert: ShortyProbeFailing
+              expr: min by (check) (shorty_probe_success) == 0
+              for: 30s
+              labels:
+                severity: critical
+              annotations:
+                summary: "Пробер не может выполнить проверку {{ $labels.check }}"
+                description: "Пользователь не может пройти сценарий {{ $labels.check }} через web, api и базу."
+
+            - alert: ShortyLoginFailures
+              expr: sum(increase(shorty_logins_total{result="failure"}[5m])) > 20
+              for: 1m
+              labels:
+                severity: warning
+              annotations:
+                summary: "Много неудачных входов: возможен подбор паролей"
+                description: "{{ $value | humanize }} неудачных попыток входа за 5 минут."
+
+        - name: shorty-runtime
+          interval: 15s
+          rules:
+            - alert: TargetDown
+              expr: up{job="kubernetes-pods"} == 0
+              for: 1m
+              labels:
+                severity: critical
+              annotations:
+                summary: "Метрики пода {{ $labels.pod }} не собираются"
+                description: "VictoriaMetrics не может открыть {{ $labels.instance }}: под упал или завис."
+
+            - alert: PostgresDown
+              expr: min(pg_up) == 0 or absent(pg_up)
+              for: 1m
+              labels:
+                severity: critical
+              annotations:
+                summary: "PostgreSQL недоступен"
+                description: "postgres-exporter не может подключиться к базе или сам exporter пропал."
+
+            - alert: GoGoroutinesHigh
+              expr: max by (pod) (go_goroutines{namespace="shorty"}) > 50
+              for: 1m
+              labels:
+                severity: warning
+              annotations:
+                summary: "В {{ $labels.pod }} растет число горутин"
+                description: "{{ $value }} горутин при обычных 10-20: возможна утечка или зависшие запросы."
+
+            - alert: GoMemoryHigh
+              expr: max by (pod) (process_resident_memory_bytes{namespace="shorty"}) > 100 * 1024 * 1024
+              for: 2m
+              labels:
+                severity: warning
+              annotations:
+                summary: "{{ $labels.pod }} использует почти весь лимит памяти"
+                description: "Резидентная память {{ $value | humanize1024 }}B при лимите контейнера 128 MiB."
+
+alertmanager:
+  enabled: true
+  configSecret: alertmanager-config

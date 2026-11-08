@@ -168,6 +168,17 @@ helm upgrade vm-single vm/victoria-metrics-single -n monitoring -f k8s/monitorin
 
 Пробер (`shorty probe`, Deployment `prober`) каждые 10 секунд открывает фронтенд, `/healthz` и короткую ссылку и отдаёт результаты в VictoriaMetrics 🤖 Формулы SLI, SLO и SLA и графики — в [k8s/slo/Отчёт.md](k8s/slo/Отчёт.md)
 
+## 🚨 Алерты
+
+```bash
+# впишите bot_token и chat_id своего Telegram-бота в k8s/alerting/alertmanager-secret.yaml
+kubectl apply -f k8s/alerting/alertmanager-secret.yaml
+helm install vm-alert vm/victoria-metrics-alert -n monitoring -f k8s/alerting/vm-alert-values.yaml
+./k8s/alerting/demo.sh errors      # 💥 вызвать сбой: errors | goroutines | db | reset
+```
+
+vmalert проверяет правила, Alertmanager шлёт уведомления в Telegram 📲 Какие алерты и почему — в [k8s/alerting/Отчёт.md](k8s/alerting/Отчёт.md)
+
 ## 🛠️ Полезные команды
 
 ```bash
@@ -199,6 +210,7 @@ k8s/             манифесты Kubernetes (по порядку примен
   logging/       VictoriaLogs, Vector, скрипт трафика и отчёт по логам
   monitoring/    values для VictoriaMetrics и отчёт по метрикам
   slo/           нагрузка и отчёт по SLI, SLO и SLA
+  alerting/      правила алертов, Alertmanager и сценарии сбоев
 web/
   public/        index.html и assets (css, js, шрифты, favicon)
   nginx.conf.template
