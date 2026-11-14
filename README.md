@@ -179,6 +179,16 @@ helm install vm-alert vm/victoria-metrics-alert -n monitoring -f k8s/alerting/vm
 
 vmalert проверяет правила, Alertmanager шлёт уведомления в Telegram 📲 Какие алерты и почему — в [k8s/alerting/Отчёт.md](k8s/alerting/Отчёт.md)
 
+## 📈 Grafana
+
+```bash
+helm repo add grafana-community https://grafana-community.github.io/helm-charts && helm repo update
+helm install grafana grafana-community/grafana -n monitoring -f k8s/grafana/grafana-values.yaml --set-file dashboards.shorty.shorty.json=k8s/grafana/shorty-dashboard.json
+kubectl port-forward svc/grafana 3000:80 -n monitoring   # 👉 http://localhost:3000, admin / admin
+```
+
+Источник VictoriaMetrics и дашборд shorty подключаются сами 🪄 Дашборд PostgreSQL: Dashboards → New → Import → `9628`. Подробности — в [k8s/grafana/Отчёт.md](k8s/grafana/Отчёт.md)
+
 ## 🛠️ Полезные команды
 
 ```bash
@@ -211,6 +221,7 @@ k8s/             манифесты Kubernetes (по порядку примен
   monitoring/    values для VictoriaMetrics и отчёт по метрикам
   slo/           нагрузка и отчёт по SLI, SLO и SLA
   alerting/      правила алертов, Alertmanager и сценарии сбоев
+  grafana/       values для Grafana и JSON дашборда
 web/
   public/        index.html и assets (css, js, шрифты, favicon)
   nginx.conf.template
