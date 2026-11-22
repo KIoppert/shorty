@@ -6,13 +6,12 @@ case "${1:-}" in
   *) echo "Usage: $0 {baseline|rolling|blue-green|canary|ab|shadow}" >&2; exit 2 ;;
 esac
 
-routes_dir="$(cd "$(dirname "$0")" && pwd)/routes"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+routes_dir="$script_dir/routes"
 k=(kubectl --context "${SHORTY_PROFILE:-minikube}" -n shorty-rollouts)
 port=${SHORTY_PORT:-18080}
 url="http://shorty-rollouts.localhost:$port"
-http() {
-  curl --noproxy '*' --resolve "shorty-rollouts.localhost:$port:127.0.0.1" --max-time 5 -sS --fail-with-body "$@"
-}
+source "$script_dir/probes.sh"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 step() { printf '\n[%s] %s\n' "$(date +%T)" "$*"; }
@@ -20,15 +19,6 @@ hold_stage() {
   local seconds=6
   printf 'Observing this stage for %s seconds...\n' "$seconds"
   sleep "$seconds"
-}
-
-response() {
-  local body
-  if ! body=$(http "$@" "$url/api/version"); then
-    printf '%s\n' "$body" >&2
-    return 1
-  fi
-  jq -er 'select(.version == "v1" or .version == "v2") | "\(.version)  \(.pod)"' <<<"$body"
 }
 
 route() {
@@ -205,21 +195,7 @@ case "$1" in
     reset_blue
     step "Shadow: mirror only GET /api/version, full client response from v1"
     route shadow
-    tag="shadow-$(openssl rand -hex 6)"
-    for ((attempt=1; attempt<=10; attempt++)); do
-      id="$tag-$attempt"
-      printf 'client (id=%s): ' "$id"
-      line=$(response -H "X-Demo-ID: $id")
-      echo "$line"
-      [[ ${line%% *} == v1 ]] || fail "shadow version answered the client"
-      sleep 1
-      logs=$("${k[@]}" logs -l 'app.kubernetes.io/name in (api,api-green)' -c api --since=2m --tail=-1 --max-log-requests=10 |
-        jq -c --arg id "$id" 'select(.demo_id == $id) | {timestamp, demo_id, version, pod, method, path, status}')
-      if jq -se 'length == 2 and (map(.version) | sort) == ["v1","v2"]' <<<"$logs" >/dev/null; then
-        printf 'Both pod logs for the same request:\n%s\n' "$logs"
-        exit 0
-      fi
-    done
-    fail "matching v1 and v2 log entries were not found"
+    shadow_proof 10 || fail "could not confirm Shadow traffic"
+    hold_stage
     ;;
 esac
