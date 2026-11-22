@@ -1,0 +1,5 @@
+spec:
+  rules:
+    - backendRefs:
+        - name: api-green
+          port: 8080

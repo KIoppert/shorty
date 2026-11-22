@@ -1,0 +1,13 @@
+spec:
+  rules:
+    - matches:
+        - headers:
+            - type: Exact
+              name: x-user-group
+              value: beta
+      backendRefs:
+        - name: api-green
+          port: 8080
+    - backendRefs:
+        - name: api
+          port: 8080

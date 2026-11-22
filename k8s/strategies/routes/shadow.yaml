@@ -1,0 +1,19 @@
+spec:
+  rules:
+    - matches:
+        - method: GET
+          path:
+            type: Exact
+            value: /api/version
+      filters:
+        - type: RequestMirror
+          requestMirror:
+            backendRef:
+              name: api-green
+              port: 8080
+      backendRefs:
+        - name: api
+          port: 8080
+    - backendRefs:
+        - name: api
+          port: 8080

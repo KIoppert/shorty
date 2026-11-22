@@ -6,6 +6,7 @@ case "${1:-}" in
   *) echo "Usage: $0 {baseline|rolling|blue-green|canary|ab|shadow}" >&2; exit 2 ;;
 esac
 
+routes_dir="$(cd "$(dirname "$0")" && pwd)/routes"
 k=(kubectl --context "${SHORTY_PROFILE:-shorty-rollouts}" -n shorty)
 port=${SHORTY_PORT:-8080}
 url="http://shorty.localhost:$port"
@@ -20,8 +21,9 @@ response() {
 }
 
 route() {
-  local spec=$1 attempt
-  "${k[@]}" patch httproute shorty-api --type=merge --patch "{\"spec\":{\"rules\":$spec}}"
+  local name=$1 attempt
+  step "HTTPRoute shorty-api ← routes/$name.yaml"
+  "${k[@]}" patch httproute shorty-api --type=merge --patch-file "$routes_dir/$name.yaml"
   for ((attempt=0; attempt<60; attempt++)); do
     if "${k[@]}" get httproute shorty-api -o json | jq -e '
       .metadata.generation as $generation |
@@ -36,11 +38,6 @@ route() {
   "${k[@]}" describe httproute shorty-api >&2
   fail "route was not accepted"
 }
-
-blue='{"name":"api","port":8080}'
-green='{"name":"api-green","port":8080}'
-to_blue="[{\"backendRefs\":[$blue]}]"
-to_green="[{\"backendRefs\":[$green]}]"
 
 wait_version() {
   local expected=$1 line attempt
@@ -69,7 +66,7 @@ sample() {
 }
 
 reset_blue() {
-  route "$to_blue"
+  route blue
   "${k[@]}" set image deployment/api api=shorty-api:v1
   "${k[@]}" rollout status deployment/api --timeout=120s
   wait_version v1
@@ -132,7 +129,7 @@ case "$1" in
       -d "{\"url\":\"https://example.com/\",\"alias\":\"demo-$tag\"}" "$url/api/links" >/dev/null
 
     step "Switch all traffic to green; verify existing cookie and PostgreSQL data on v2"
-    route "$to_green"
+    route green
     wait_version v2
     sample 12 12 12 || fail "expected green after switch"
     headers=$(http -b "$jar" -D - -o /dev/null "$url/api/me")
@@ -140,7 +137,7 @@ case "$1" in
     http -b "$jar" "$url/api/links" | jq -ce --arg alias "demo-$tag" '.[] | select(.code == $alias)'
 
     step "Rollback by switching the route back to the still-ready blue pool"
-    route "$to_blue"
+    route blue
     wait_version v1
     sample 12 0 0 || fail "expected blue after rollback"
     "${k[@]}" get deploy api api-green
@@ -149,7 +146,7 @@ case "$1" in
     reset_blue
     for weights in 90/10 50/50 0/100; do
       step "Canary weights v1/v2: $weights"
-      route "[{\"backendRefs\":[${blue%\}},\"weight\":${weights%/*}},${green%\}},\"weight\":${weights#*/}}]}]"
+      route "canary-${weights//\//-}"
       case "$weights" in
         90/10) lower=3; upper=28 ;;
         50/50) lower=40; upper=80 ;;
@@ -164,16 +161,16 @@ case "$1" in
     ;;
   ab)
     reset_blue
-    step "A/B: exact match X-Shorty-Audience: beta -> v2, default -> v1"
-    route "[{\"matches\":[{\"headers\":[{\"type\":\"Exact\",\"name\":\"X-Shorty-Audience\",\"value\":\"beta\"}]}],\"backendRefs\":[$green]},${to_blue#\[}"
+    step "A/B: exact match x-user-group: beta -> v2, default -> v1"
+    route ab
     printf 'no header: '; wait_version v1
-    printf 'X-Shorty-Audience: beta: '; wait_version v2 -H 'X-Shorty-Audience: beta'
-    printf 'X-Shorty-Audience: other: '; wait_version v1 -H 'X-Shorty-Audience: other'
+    printf 'x-user-group: beta: '; wait_version v2 -H 'x-user-group: beta'
+    printf 'x-user-group: other: '; wait_version v1 -H 'x-user-group: other'
     ;;
   shadow)
     reset_blue
     step "Shadow: mirror only GET /api/version, full client response from v1"
-    route "[{\"matches\":[{\"method\":\"GET\",\"path\":{\"type\":\"Exact\",\"value\":\"/api/version\"}}],\"filters\":[{\"type\":\"RequestMirror\",\"requestMirror\":{\"backendRef\":$green}}],\"backendRefs\":[$blue]},${to_blue#\[}"
+    route shadow
     tag="shadow-$(openssl rand -hex 6)"
     for ((attempt=1; attempt<=10; attempt++)); do
       id="$tag-$attempt"
