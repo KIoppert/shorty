@@ -10,9 +10,9 @@
 
 ## 1. Цель и стенд
 
-Цель работы — развернуть Shorty в Minikube и продемонстрировать Rolling, Blue/Green, Canary, A/B и Shadow. На стенде использованы Windows с WSL 2, Minikube с драйвером Docker, Kubernetes 1.34 и Envoy Gateway 1.6.4. Версии стенда подтверждаются логом `00-setup.log`.
+Цель работы — развернуть Shorty в Minikube и продемонстрировать Rolling, Blue/Green, Canary, A/B и Shadow. На стенде использованы Windows с WSL 2, существующий профиль Minikube с драйвером Docker, Kubernetes [версия] и Envoy Gateway [версия]. Версии стенда подтверждаются логом `00-setup.log`.
 
-Envoy Gateway принимает HTTP через Gateway API. Маршрут `shorty-web` передаёт главную страницу и статику в nginx. Маршрут `shorty-api` управляет API и переходами по коротким ссылкам. Для локального доступа Service Envoy проброшен с порта 80 к порту 8080 внутри WSL командой `kubectl port-forward` из `traffic.sh`.
+Демо развёрнуто рядом с рабочим приложением в отдельном namespace `shorty-rollouts`. Envoy Gateway принимает HTTP через Gateway API. Маршрут `shorty-web` передаёт главную страницу и статику в nginx. Маршрут `shorty-api` управляет API и переходами по коротким ссылкам. Для локального доступа Service Envoy проброшен с порта 80 к порту 18080 внутри WSL командой `kubectl port-forward` из `traffic.sh`.
 
 ## 2. Работа в нескольких подах
 

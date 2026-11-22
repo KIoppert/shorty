@@ -1,24 +1,27 @@
 # Домашняя работа 1. Стратегии развёртывания Shorty
 
-`shorty.localhost` принимает запросы через Envoy Gateway. HTTPRoute `shorty-web` направляет `/` и `/assets` в nginx. HTTPRoute `shorty-api` управляет остальным трафиком, включая REST API и короткие ссылки.
+`shorty-rollouts.localhost` принимает запросы через Envoy Gateway. HTTPRoute `shorty-web` направляет `/` и `/assets` в nginx. HTTPRoute `shorty-api` управляет остальным трафиком, включая REST API и короткие ссылки.
 
 Два Deployment используют одну PostgreSQL с постоянным томом и один ключ подписи JWT. Каждый Deployment держит две реплики. `GET /healthz` проверяет связь с БД для readiness. `GET /api/livez` проверяет, что HTTP-сервер отвечает, для liveness. `GET /api/version` возвращает версию из сборки и имя пода. Все ответы API также содержат `X-Shorty-Version`.
 
 | Deployment и Service | Образ перед демонстрацией | Назначение |
 | --- | --- | --- |
-| `api` | `shorty-api:v1` | Blue и цель RollingUpdate |
-| `api-green` | `shorty-api:v2` | Green, канареечная версия, аудитория B и получатель зеркальной копии |
+| `api` | `shorty-rollout-api:v1` | Blue и цель RollingUpdate |
+| `api-green` | `shorty-rollout-api:v2` | Green, канареечная версия, аудитория B и получатель зеркальной копии |
 
 В приложенном семинарском демо используется та же схема GatewayClass → Gateway → HTTPRoute. В Shorty правила каждого этапа лежат в `routes/` и применяются к `shorty-api`. Синий пул здесь обозначает v1, зелёный — v2. Наблюдение за версиями идёт через HTTP-ответы и логи подов.
 
 ## 1. Подготовить кластер
 
-Понадобятся Docker с BuildKit, Minikube с Docker-драйвером, kubectl, Bash, curl, jq и OpenSSL. Скрипт создаёт отдельный профиль `shorty-rollouts` с Kubernetes 1.34 и ставит Envoy Gateway 1.6.4. Для профиля выделяются 3 CPU и 4 ГБ памяти. Используются локальные настройки БД и JWT из базового Kubernetes-примера.
+Понадобятся Docker с BuildKit, Minikube с Docker-драйвером, kubectl, Bash, curl, jq и OpenSSL. Запустите существующий профиль `minikube`. Скрипт использует этот кластер и размещает демо в namespace `shorty-rollouts` с отдельными образами и томом PostgreSQL. При первом запуске он устанавливает Envoy Gateway 1.10.0. Если в кластере уже есть Deployment `envoy-gateway` в `envoy-gateway-system`, используется он. Для другого профиля установите `SHORTY_PROFILE` в обеих панелях терминала.
 
 Из корня репозитория выполните:
 
 ```bash
+git fetch origin
 git switch homework/deployment-strategies
+git pull --ff-only origin homework/deployment-strategies
+minikube start
 set -o pipefail
 export LOG_DIR="$HOME/shorty-evidence"
 mkdir -p "$LOG_DIR"
@@ -35,7 +38,14 @@ mkdir -p "$LOG_DIR"
 ./k8s/strategies/traffic.sh
 ```
 
-Скрипт находит Service Envoy, открывает порт 8080 и печатает версию и имя пода каждые полсекунды. Можно добавить `2>&1 | tee "$HOME/shorty-evidence/traffic.log"`, чтобы сохранить непрерывный поток. Для одного port-forward используйте `./k8s/strategies/traffic.sh --forward-only`. Оставьте выбранный процесс запущенным и откройте `http://shorty.localhost:8080` в браузере. Если порт занят локальным Compose, освободите его перед запуском.
+Скрипт находит Service Envoy, открывает порт 18080 внутри WSL и печатает версию и имя пода каждые полсекунды. Можно добавить `2>&1 | tee "$HOME/shorty-evidence/traffic.log"`, чтобы сохранить непрерывный поток. Для одного port-forward используйте `./k8s/strategies/traffic.sh --forward-only`. Оставьте выбранный процесс запущенным и откройте `http://shorty-rollouts.localhost:18080` в браузере. В Windows обычно доступен тот же локальный порт. Проверять стратегии и записывать терминал можно целиком в WSL. Если порт 18080 занят, перед установкой задайте другой порт через `SHORTY_PORT` и экспортируйте то же значение в обеих панелях.
+
+Проверка из первой панели WSL:
+
+```bash
+curl --noproxy '*' --resolve shorty-rollouts.localhost:18080:127.0.0.1 \
+  http://shorty-rollouts.localhost:18080/api/version
+```
 
 ## 3. Выполнить проверки и сохранить логи
 
@@ -50,7 +60,7 @@ export LOG_DIR="$HOME/shorty-evidence"
 ./k8s/strategies/demo.sh canary     2>&1 | tee "$LOG_DIR/04-canary.log"
 ./k8s/strategies/demo.sh ab         2>&1 | tee "$LOG_DIR/05-ab.log"
 ./k8s/strategies/demo.sh shadow     2>&1 | tee "$LOG_DIR/06-shadow.log"
-kubectl --context shorty-rollouts -n shorty get gateway,httproute,deploy,rs,pods -o wide \
+kubectl --context minikube -n shorty-rollouts get gateway,httproute,deploy,rs,pods -o wide \
   | tee "$LOG_DIR/07-final-state.log"
 ```
 

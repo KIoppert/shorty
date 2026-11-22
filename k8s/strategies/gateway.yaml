@@ -1,7 +1,7 @@
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
-  name: shorty
+  name: shorty-rollouts
   namespace: envoy-gateway-system
 spec:
   provider:
@@ -13,37 +13,37 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
-  name: shorty-envoy
+  name: shorty-rollouts
 spec:
   controllerName: gateway.envoyproxy.io/gatewayclass-controller
   parametersRef:
     group: gateway.envoyproxy.io
     kind: EnvoyProxy
-    name: shorty
+    name: shorty-rollouts
     namespace: envoy-gateway-system
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: shorty
-  namespace: shorty
+  name: shorty-rollouts
+  namespace: shorty-rollouts
 spec:
-  gatewayClassName: shorty-envoy
+  gatewayClassName: shorty-rollouts
   listeners:
     - name: http
       protocol: HTTP
       port: 80
-      hostname: shorty.localhost
+      hostname: shorty-rollouts.localhost
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: shorty-web
-  namespace: shorty
+  namespace: shorty-rollouts
 spec:
   parentRefs:
-    - name: shorty
-  hostnames: [shorty.localhost]
+    - name: shorty-rollouts
+  hostnames: [shorty-rollouts.localhost]
   rules:
     - matches:
         - path:
@@ -60,11 +60,11 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: shorty-api
-  namespace: shorty
+  namespace: shorty-rollouts
 spec:
   parentRefs:
-    - name: shorty
-  hostnames: [shorty.localhost]
+    - name: shorty-rollouts
+  hostnames: [shorty-rollouts.localhost]
   rules:
     - backendRefs:
         - name: api

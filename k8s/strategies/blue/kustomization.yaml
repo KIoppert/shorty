@@ -1,7 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+namespace: shorty-rollouts
 resources:
   - ../../40-api.yaml
 images:
   - name: shorty-api
+    newName: shorty-rollout-api
     newTag: v1

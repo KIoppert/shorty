@@ -7,11 +7,11 @@ case "${1:-}" in
 esac
 
 routes_dir="$(cd "$(dirname "$0")" && pwd)/routes"
-k=(kubectl --context "${SHORTY_PROFILE:-shorty-rollouts}" -n shorty)
-port=${SHORTY_PORT:-8080}
-url="http://shorty.localhost:$port"
+k=(kubectl --context "${SHORTY_PROFILE:-minikube}" -n shorty-rollouts)
+port=${SHORTY_PORT:-18080}
+url="http://shorty-rollouts.localhost:$port"
 http() {
-  curl --noproxy '*' --resolve "shorty.localhost:$port:127.0.0.1" --max-time 5 -fsS "$@"
+  curl --noproxy '*' --resolve "shorty-rollouts.localhost:$port:127.0.0.1" --max-time 5 -fsS "$@"
 }
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
@@ -27,7 +27,7 @@ route() {
   for ((attempt=0; attempt<60; attempt++)); do
     if "${k[@]}" get httproute shorty-api -o json | jq -e '
       .metadata.generation as $generation |
-      any(.status.parents[]? | select(.parentRef.name == "shorty");
+      any(.status.parents[]? | select(.parentRef.name == "shorty-rollouts");
         ([.conditions[] | select(.observedGeneration == $generation and .status == "True") | .type]
           | index("Accepted") != null and index("ResolvedRefs") != null))' >/dev/null; then
       "${k[@]}" get httproute shorty-api -o json | jq -c '.spec.rules[]'
@@ -67,7 +67,7 @@ sample() {
 
 reset_blue() {
   route blue
-  "${k[@]}" set image deployment/api api=shorty-api:v1
+  "${k[@]}" set image deployment/api api=shorty-rollout-api:v1
   "${k[@]}" rollout status deployment/api --timeout=120s
   wait_version v1
 }
@@ -92,7 +92,7 @@ case "$1" in
     reset_blue
     step "RollingUpdate: maxSurge=1, maxUnavailable=0; Service api stays selected"
     "${k[@]}" get deployment/api -o json | jq '.spec.strategy'
-    "${k[@]}" set image deployment/api api=shorty-api:v2
+    "${k[@]}" set image deployment/api api=shorty-rollout-api:v2
     seen_v1=0
     seen_v2=0
     for ((i=0; i<30; i++)); do

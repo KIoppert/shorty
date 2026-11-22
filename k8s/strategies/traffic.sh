@@ -7,13 +7,13 @@ if (( $# > 1 )) || [[ $count != --forward-only && ! $count =~ ^(0|[1-9][0-9]*)$ 
   exit 2
 fi
 
-port=${SHORTY_PORT:-8080}
-k=(kubectl --context "${SHORTY_PROFILE:-shorty-rollouts}" -n envoy-gateway-system)
+port=${SHORTY_PORT:-18080}
+k=(kubectl --context "${SHORTY_PROFILE:-minikube}" -n envoy-gateway-system)
 service=$("${k[@]}" get svc \
-  -l 'gateway.envoyproxy.io/owning-gateway-namespace=shorty,gateway.envoyproxy.io/owning-gateway-name=shorty' \
+  -l 'gateway.envoyproxy.io/owning-gateway-namespace=shorty-rollouts,gateway.envoyproxy.io/owning-gateway-name=shorty-rollouts' \
   -o json | jq -r '[.items[] | select(any(.spec.ports[]?; .port == 80))][0].metadata.name // empty')
 if [[ -z $service ]]; then
-  echo "Envoy service for Gateway shorty was not found. Run setup.sh first." >&2
+  echo "Envoy service for Gateway shorty-rollouts was not found. Run setup.sh first." >&2
   exit 1
 fi
 
@@ -39,7 +39,7 @@ if ! kill -0 "$pid" 2>/dev/null || ! grep -q '^Forwarding from' "$log"; then
   exit 1
 fi
 
-url="http://shorty.localhost:$port/api/version"
+url="http://shorty-rollouts.localhost:$port/api/version"
 echo "GET $url (Ctrl+C to stop)"
 failures=0
 for ((i=0; count == 0 || i<count; i++)); do
@@ -47,7 +47,7 @@ for ((i=0; count == 0 || i<count; i++)); do
     cat "$log" >&2
     exit 1
   fi
-  if response=$(curl --noproxy '*' --resolve "shorty.localhost:$port:127.0.0.1" \
+  if response=$(curl --noproxy '*' --resolve "shorty-rollouts.localhost:$port:127.0.0.1" \
     --max-time 5 -fsS "$url" | jq -er 'select(.version and .pod) | "\(.version)  \(.pod)"'); then
     printf '%s | %s\n' "$(date +%T)" "$response"
   else
