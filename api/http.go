@@ -22,6 +22,12 @@ func (a *App) routes() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", a.health)
+	mux.HandleFunc("GET /api/livez", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("GET /api/version", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{"version": version, "pod": hostname})
+	})
 
 	mux.HandleFunc("POST /api/auth/register", a.register)
 	mux.HandleFunc("POST /api/auth/login", a.login)
@@ -135,6 +141,7 @@ func (s *statusRecorder) WriteHeader(code int) {
 func logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		w.Header().Set("X-Shorty-Version", version)
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
 		observeRequest(r, rec.status, time.Since(start))
@@ -146,7 +153,11 @@ func logRequests(next http.Handler) http.Handler {
 		case rec.status >= 400:
 			level = slog.LevelWarn
 		}
-		slog.Log(r.Context(), level, "request",
+		logger := slog.Default()
+		if r.URL.Path == "/api/version" {
+			logger = logger.With("demo_id", r.Header.Get("X-Demo-ID"))
+		}
+		logger.Log(r.Context(), level, "request",
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rec.status,

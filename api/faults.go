@@ -11,7 +11,7 @@ func injectFaults(cfg Config, mux *http.ServeMux) http.Handler {
 		return mux
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/healthz" {
+		if r.URL.Path != "/healthz" && r.URL.Path != "/api/livez" {
 			time.Sleep(cfg.FaultDelay)
 			if rand.Float64() < cfg.FaultErrorRate {
 				_, r.Pattern = mux.Handler(r)

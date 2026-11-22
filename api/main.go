@@ -15,9 +15,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Set by the image build with -ldflags.
+var version = "dev"
+var hostname, _ = os.Hostname()
+
 func main() {
 	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{ReplaceAttr: logKeys})
-	slog.SetDefault(slog.New(handler).With("service.name", "shorty-api"))
+	slog.SetDefault(slog.New(handler).With("service.name", "shorty-api", "version", version, "pod", hostname))
 
 	if err := run(); err != nil {
 		slog.Error("fatal", "err", err)
