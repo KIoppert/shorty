@@ -66,6 +66,24 @@ kubectl --context minikube -n shorty-rollouts get gateway,httproute,deploy,rs,po
 
 Каждый сценарий начинает с blue v1, поэтому его можно повторить отдельно. Скрипт показывает правила HTTPRoute и проверяет HTTP-ответы. Если команда завершилась с ошибкой, устраните сбой и повторите её перед записью.
 
+### Откат
+
+После Rolling верните образ v1 и дождитесь обновления Deployment:
+
+```bash
+kubectl --context minikube -n shorty-rollouts set image deployment/api api=shorty-rollout-api:v1
+kubectl --context minikube -n shorty-rollouts rollout status deployment/api --timeout=180s
+```
+
+После Blue/Green, Canary, A/B или Shadow верните маршрут на основной пул v1:
+
+```bash
+kubectl --context minikube -n shorty-rollouts patch httproute shorty-api \
+  --type=merge --patch-file k8s/strategies/routes/blue.yaml
+```
+
+При Rolling завершающийся pod `api` ещё 10 секунд обслуживает запросы через `preStop`, пока обновляется список эндпоинтов у Envoy. Сценарий продолжает собирать лог при ошибке HTTP и возвращает ошибку по завершении прогона.
+
 ## 4. Записать скринкаст
 
 До начала записи выполните шаги 1–2 и прогоните проверки. Для сдачи повторите шаг 3 при включённой записи, чтобы видео и логи относились к одному прогону.

@@ -7,3 +7,22 @@ images:
   - name: shorty-api
     newName: shorty-rollout-api
     newTag: v1
+patches:
+  - target:
+      kind: Deployment
+      name: api
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: api
+      spec:
+        template:
+          spec:
+            containers:
+              - name: api
+                lifecycle:
+                  preStop:
+                    # Keep serving while Envoy receives the EndpointSlice update.
+                    sleep:
+                      seconds: 10

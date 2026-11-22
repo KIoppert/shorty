@@ -11,13 +11,18 @@ k=(kubectl --context "${SHORTY_PROFILE:-minikube}" -n shorty-rollouts)
 port=${SHORTY_PORT:-18080}
 url="http://shorty-rollouts.localhost:$port"
 http() {
-  curl --noproxy '*' --resolve "shorty-rollouts.localhost:$port:127.0.0.1" --max-time 5 -fsS "$@"
+  curl --noproxy '*' --resolve "shorty-rollouts.localhost:$port:127.0.0.1" --max-time 5 -sS --fail-with-body "$@"
 }
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 step() { printf '\n[%s] %s\n' "$(date +%T)" "$*"; }
 response() {
-  http "$@" "$url/api/version" | jq -er 'select(.version == "v1" or .version == "v2") | "\(.version)  \(.pod)"'
+  local body
+  if ! body=$(http "$@" "$url/api/version"); then
+    printf '%s\n' "$body" >&2
+    return 1
+  fi
+  jq -er 'select(.version == "v1" or .version == "v2") | "\(.version)  \(.pod)"' <<<"$body"
 }
 
 route() {
@@ -95,19 +100,25 @@ case "$1" in
     "${k[@]}" set image deployment/api api=shorty-rollout-api:v2
     seen_v1=0
     seen_v2=0
+    errors=0
     for ((i=0; i<30; i++)); do
-      line=$(response)
-      printf '%s  %s\n' "$(date +%T)" "$line"
-      case "${line%% *}" in
-        v1) seen_v1=1 ;;
-        v2) seen_v2=1 ;;
-      esac
+      if line=$(response); then
+        printf '%s  %s\n' "$(date +%T)" "$line"
+        case "${line%% *}" in
+          v1) seen_v1=1 ;;
+          v2) seen_v2=1 ;;
+        esac
+      else
+        printf '%s  request failed during rollout\n' "$(date +%T)" >&2
+        errors=$((errors + 1))
+      fi
       if (( i % 5 == 0 )); then
         "${k[@]}" get rs -l app.kubernetes.io/name=api -o wide
       fi
       sleep 1
     done
     "${k[@]}" rollout status deployment/api --timeout=120s
+    (( errors == 0 )) || fail "$errors request(s) failed during rollout"
     (( seen_v1 && seen_v2 )) || fail "expected both versions during the rollout"
     sample 12 12 12 || fail "expected 100% v2 after rollout"
     ;;
