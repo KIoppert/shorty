@@ -16,6 +16,12 @@ http() {
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 step() { printf '\n[%s] %s\n' "$(date +%T)" "$*"; }
+hold_stage() {
+  local seconds=6
+  printf 'Observing this stage for %s seconds...\n' "$seconds"
+  sleep "$seconds"
+}
+
 response() {
   local body
   if ! body=$(http "$@" "$url/api/version"); then
@@ -55,6 +61,17 @@ wait_version() {
     sleep 1
   done
   fail "expected $expected from Envoy Gateway"
+}
+
+show_audience() {
+  local expected=$1 header=${2:-} options=()
+  if [[ -n $header ]]; then
+    options=(-H "$header")
+  fi
+  step "GET /api/version"
+  printf '  Request header: %s\n' "${header:-x-user-group omitted}"
+  printf '  Response version and pod: '
+  wait_version "$expected" "${options[@]}"
 }
 
 sample() {
@@ -138,6 +155,7 @@ case "$1" in
       -d "{\"email\":\"$email\",\"password\":\"$password\"}" "$url/api/auth/register" >/dev/null
     http -b "$jar" -H 'Content-Type: application/json' \
       -d "{\"url\":\"https://example.com/\",\"alias\":\"demo-$tag\"}" "$url/api/links" >/dev/null
+    hold_stage
 
     step "Switch all traffic to green; verify existing cookie and PostgreSQL data on v2"
     route green
@@ -146,12 +164,14 @@ case "$1" in
     headers=$(http -b "$jar" -D - -o /dev/null "$url/api/me")
     grep -i '^x-shorty-version: v2' <<<"$headers" || fail "the session check did not reach v2"
     http -b "$jar" "$url/api/links" | jq -ce --arg alias "demo-$tag" '.[] | select(.code == $alias)'
+    hold_stage
 
     step "Rollback by switching the route back to the still-ready blue pool"
     route blue
     wait_version v1
     sample 12 0 0 || fail "expected blue after rollback"
     "${k[@]}" get deploy api api-green
+    hold_stage
     ;;
   canary)
     reset_blue
@@ -168,15 +188,18 @@ case "$1" in
         if sample 120 "$lower" "$upper"; then break; fi
         (( attempt < 3 )) || fail "observed distribution is inconsistent with $weights"
       done
+      hold_stage
     done
     ;;
   ab)
     reset_blue
     step "A/B: exact match x-user-group: beta -> v2, default -> v1"
     route ab
-    printf 'no header: '; wait_version v1
-    printf 'x-user-group: beta: '; wait_version v2 -H 'x-user-group: beta'
-    printf 'x-user-group: other: '; wait_version v1 -H 'x-user-group: other'
+    show_audience v1
+    hold_stage
+    show_audience v2 'x-user-group: beta'
+    hold_stage
+    show_audience v1 'x-user-group: other'
     ;;
   shadow)
     reset_blue

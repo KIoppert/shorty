@@ -40,7 +40,7 @@ if ! kill -0 "$pid" 2>/dev/null || ! grep -q '^Forwarding from' "$log"; then
 fi
 
 url="http://shorty-rollouts.localhost:$port/api/version"
-echo "GET $url (Ctrl+C to stop)"
+echo "GET $url (x-user-group omitted; Ctrl+C to stop)"
 failures=0
 for ((i=0; count == 0 || i<count; i++)); do
   if ! kill -0 "$pid" 2>/dev/null; then
